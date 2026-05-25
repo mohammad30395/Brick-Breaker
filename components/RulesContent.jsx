@@ -25,7 +25,7 @@ const sections = [
   {
     icon: Trophy,
     title: "Winning and game over",
-    text: "You win when all destroyable bricks are gone. Unbreakable bricks are ignored for the win check. The round ends in game over if the ball drops below the paddle.",
+    text: "You start with 3 lives. You lose one life when the ball drops below the paddle. You win when all destroyable bricks are gone, and the game ends when all lives are used.",
   },
   {
     icon: Database,

@@ -27,6 +27,7 @@ export default function GameResultModal({ result, onPlayAgain, onChangeDifficult
           <Stat label="Difficulty" value={result.difficulty} />
           <Stat label="Ball speed" value={`${result.speed}x`} />
           <Stat label="Ground layout" value={result.ground} />
+          <Stat label="Lives remaining" value={result.livesRemaining} />
           <Stat label="Time played" value={formatTime(result.timePlayed)} />
           <Stat label="Date/time" value={new Date(result.playedAt).toLocaleString()} />
         </dl>

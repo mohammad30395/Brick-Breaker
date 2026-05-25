@@ -78,7 +78,7 @@ export default function SetupForm() {
             className="field"
             value={values.name}
             onChange={(event) => updateValue("name", event.target.value)}
-            placeholder="Fahmid"
+            placeholder="e.g Alex"
             aria-describedby={errors.name ? "name-error" : undefined}
           />
           {errors.name && <p id="name-error" className="mt-2 text-sm text-rose-300">{errors.name}</p>}

@@ -40,8 +40,10 @@ export default function PhaserGame({
 
       let score = 0;
       let remaining = destroyableCount;
+      let lives = 3;
       let finished = false;
-      let startTime = 0;
+      let waitingForServe = false;
+      let elapsedMs = 0;
       let lastStatsAt = 0;
 
       class BrickBreakerScene extends Phaser.Scene {
@@ -51,7 +53,6 @@ export default function PhaserGame({
 
         create() {
           sceneRef.current = this;
-          startTime = this.time.now;
           this.physics.world.setBoundsCollision(true, true, true, false);
 
           const bg = this.add.graphics();
@@ -68,7 +69,7 @@ export default function PhaserGame({
           this.ball.body.setCircle(10);
           this.ball.body.setBounce(1, 1);
           this.ball.body.setCollideWorldBounds(true);
-          this.ball.body.setVelocity(baseVelocity * 0.45, -baseVelocity);
+          launchBall(this);
 
           this.brickGroup = this.physics.add.staticGroup();
           createBricks(this, bricks, normalBrickColor);
@@ -86,7 +87,9 @@ export default function PhaserGame({
         }
 
         update(time, delta) {
-          if (finished) return;
+          if (finished || waitingForServe) return;
+
+          elapsedMs += delta;
 
           const moveSpeed = 0.62 * delta;
           if (this.cursors.left.isDown || this.keys.A.isDown) {
@@ -96,7 +99,7 @@ export default function PhaserGame({
           }
 
           if (this.ball.y > GAME_HEIGHT + 26) {
-            finishRound("Game Over");
+            handleLifeLost(this);
             return;
           }
 
@@ -144,6 +147,36 @@ export default function PhaserGame({
         scene.ball.body.setVelocity(velocityX, -Math.abs(scene.ball.body.velocity.y || baseVelocity));
       }
 
+      function resetBall(scene) {
+        scene.ball.setPosition(scene.paddle.x, GAME_HEIGHT - 82);
+        scene.ball.body.setVelocity(0, 0);
+      }
+
+      function launchBall(scene) {
+        scene.ball.body.setVelocity(baseVelocity * 0.45, -baseVelocity);
+      }
+
+      function handleLifeLost(scene) {
+        if (waitingForServe || finished) return;
+
+        lives -= 1;
+        reportStats(true);
+
+        if (lives <= 0) {
+          finishRound("Game Over");
+          return;
+        }
+
+        waitingForServe = true;
+        resetBall(scene);
+        scene.time.delayedCall(850, () => {
+          if (finished || !scene.ball?.body) return;
+          waitingForServe = false;
+          launchBall(scene);
+          reportStats(true);
+        });
+      }
+
       function handleBrickHit(scene, brick) {
         if (finished || brick.getData("unbreakable")) return;
 
@@ -171,7 +204,8 @@ export default function PhaserGame({
         onStats?.({
           score,
           remaining,
-          timePlayed: Math.max(0, Math.floor((scene.time.now - startTime) / 1000)),
+          lives,
+          timePlayed: Math.max(0, Math.floor(elapsedMs / 1000)),
         });
       }
 
@@ -179,9 +213,9 @@ export default function PhaserGame({
         if (finished) return;
         finished = true;
         const scene = sceneRef.current;
-        const timePlayed = scene ? Math.max(0, Math.floor((scene.time.now - startTime) / 1000)) : 0;
+        const timePlayed = Math.max(0, Math.floor(elapsedMs / 1000));
         scene?.physics.pause();
-        onResult?.({ outcome, score, timePlayed });
+        onResult?.({ outcome, score, lives, timePlayed });
       }
 
       gameRef.current = new Phaser.Game({

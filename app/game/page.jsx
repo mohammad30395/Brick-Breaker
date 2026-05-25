@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Home, Pause, Play, RotateCcw } from "lucide-react";
 import Button from "@/components/Button";
@@ -21,10 +21,12 @@ export default function GamePage() {
   const [playerSetup, setPlayerSetup] = useState(null);
   const [ground, setGround] = useState(null);
   const [difficulty, setDifficulty] = useState(null);
-  const [stats, setStats] = useState({ score: 0, remaining: 0, timePlayed: 0 });
+  const [stats, setStats] = useState({ score: 0, remaining: 0, lives: 3, timePlayed: 0 });
   const [isPaused, setIsPaused] = useState(false);
   const [result, setResult] = useState(null);
   const [gameKey, setGameKey] = useState(0);
+  const savedResultRef = useRef(false);
+  const gameSessionIdRef = useRef(makeId());
 
   useEffect(() => {
     document.body.classList.add("game-page-lock");
@@ -51,35 +53,38 @@ export default function GamePage() {
   }, []);
 
   const handleResult = useCallback((roundResult) => {
+    if (savedResultRef.current || !playerSetup || !ground || !difficulty) return;
+
+    savedResultRef.current = true;
     setIsPaused(false);
-    setResult((existing) => {
-      if (existing || !playerSetup || !ground || !difficulty) return existing;
+    const record = {
+      id: makeId(),
+      gameSessionId: gameSessionIdRef.current,
+      name: playerSetup.name,
+      username: playerSetup.username,
+      score: roundResult.score,
+      difficulty: difficulty.label,
+      difficultyId: difficulty.id,
+      outcome: roundResult.outcome,
+      speed: playerSetup.speed,
+      ground: ground.label,
+      groundId: ground.id,
+      livesRemaining: roundResult.lives,
+      timePlayed: roundResult.timePlayed,
+      playedAt: new Date().toISOString(),
+    };
 
-      const record = {
-        id: makeId(),
-        name: playerSetup.name,
-        username: playerSetup.username,
-        score: roundResult.score,
-        difficulty: difficulty.label,
-        difficultyId: difficulty.id,
-        outcome: roundResult.outcome,
-        speed: playerSetup.speed,
-        ground: ground.label,
-        groundId: ground.id,
-        timePlayed: roundResult.timePlayed,
-        playedAt: new Date().toISOString(),
-      };
-
-      saveLeaderboardRecord(record);
-      return record;
-    });
+    saveLeaderboardRecord(record);
+    setResult(record);
   }, [difficulty, ground, playerSetup]);
 
   const gameDataReady = useMemo(() => playerSetup && ground && difficulty, [difficulty, ground, playerSetup]);
 
   function restartRound() {
+    savedResultRef.current = false;
+    gameSessionIdRef.current = makeId();
     setResult(null);
-    setStats({ score: 0, remaining: 0, timePlayed: 0 });
+    setStats({ score: 0, remaining: 0, lives: 3, timePlayed: 0 });
     setIsPaused(false);
     setGameKey((current) => current + 1);
   }
@@ -109,9 +114,10 @@ export default function GamePage() {
               {playerSetup.name} @{playerSetup.username} · {difficulty.label} · {ground.label} · {playerSetup.speed}x
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center text-xs sm:min-w-72">
+          <div className="grid grid-cols-4 gap-2 text-center text-xs sm:min-w-80">
             <HudStat label="Score" value={stats.score} />
             <HudStat label="Left" value={stats.remaining} />
+            <HudStat label="Lives" value={stats.lives} />
             <HudStat label="Time" value={formatTime(stats.timePlayed)} />
           </div>
         </header>
